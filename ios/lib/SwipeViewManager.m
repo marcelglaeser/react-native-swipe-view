@@ -10,6 +10,7 @@
 #import "RCTScrollView.h"
 #import "RCTRootView.h"
 
+#define kAlphaDirectionUndefined nil
 #define kMinPanToCompleteUndefined -1
 #define kDefaultBounceBackDuration 0.35
 #define kDefaultSpringDamping 0.65
@@ -18,6 +19,8 @@
 @property (nonatomic) CGFloat minPanToComplete;
 @property (nonatomic) CGPoint originalCenter;
 @property (nonatomic) BOOL changeAlpha;
+@property (nonatomic, copy) NSString *alphaDirection;
+@property (nonatomic, copy) NSString *direction;
 @property (nonatomic) BOOL removeViewOnSwipedOut;
 @property (nonatomic) CGFloat bounceBackAnimDuration;
 @property (nonatomic) CGFloat bounceBackAnimDamping;
@@ -38,16 +41,49 @@
   if (self)
   {
     self.changeAlpha = NO;
+    self.alphaDirection = kAlphaDirectionUndefined;
     self.removeViewOnSwipedOut = NO;
     self.minPanToComplete = kMinPanToCompleteUndefined;
     self.bounceBackAnimDuration = kDefaultBounceBackDuration;
     self.bounceBackAnimDamping = kDefaultSpringDamping;
-    
+
     UIPanGestureRecognizer *panGesture = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(onPanGesture:)];
     panGesture.delegate = self;
     [self addGestureRecognizer:panGesture];
   }
   return self;
+}
+
+- (void) setChangeAlpha:(BOOL enable)
+{
+  self.changeAlpha = enable;
+  if(enable) {
+    self.changeAlphaLeft = true;
+    self.changeAlphaRight = true;
+  } else {
+    self.changeAlphaLeft = false;
+    self.changeAlphaRight = false;
+  }
+}
+
+- (void) setAlphaDirection:(NSString *direction)
+{
+  if (![direction isEqual:self.alphaDirection]) {
+    self.alphaDirection = [direction copy];
+    if([direction isEqual:@"left"]) {
+      self.changeAlphaLeft = true;
+      self.changeAlphaRight = false;
+    } else if([direction isEqual:@"right"]) {
+      self.changeAlphaLeft = false;
+      self.changeAlphaRight = true;
+    } else if([direction isEqual:@"both"]) {
+      self.changeAlphaLeft = true;
+      self.changeAlphaRight = true;
+    } else {
+      self.changeAlphaLeft = false;
+      self.changeAlphaRight = false;
+    }
+  }
 }
 
 - (UIScrollView*)getScrollView
@@ -82,7 +118,7 @@
         if ([view isKindOfClass:[RCTRootView class]])
             break;
     }
-    
+
     if ([view isKindOfClass:[RCTRootView class]])
     {
         return view;
@@ -102,6 +138,18 @@
 - (BOOL)gestureRecognizerShouldBegin:(UIPanGestureRecognizer *)panGesture
 {
   CGPoint velocity = [panGesture velocityInView:self];
+  if(self.alphaDirection == kAlphaDirectionUndefined)
+  {
+    if(self.changeAlpha) {
+      self.alphaDirection = @"both";
+      self.changeAlphaLeft = true;
+      self.changeAlphaRight = true;
+    } else {
+      self.alphaDirection = @"none";
+      self.changeAlphaLeft = false;
+      self.changeAlphaRight = false;
+    }
+  }
   return fabs(velocity.y) < fabs(velocity.x);
 }
 
@@ -114,16 +162,16 @@
     {
       self.minPanToComplete = self.frame.size.width * 0.5;
     }
-    
+
     UIScrollView *containerScrolView = [self getScrollView];
     if (containerScrolView != nil && containerScrolView.scrollEnabled)
     {
       containerScrolView.scrollEnabled = NO;
       self.containerScrollVIew = containerScrolView;
     }
-    
+
     [self cancelCurrentTouch];
-      
+
     NSString *directionString = ([panGesture velocityInView:self].x < 0) ? @"left" : @"right";
     if (_onSwipeStart)
     {
@@ -134,8 +182,9 @@
   {
     CGPoint translation = [panGesture translationInView:self.superview];
     self.center = CGPointMake(self.originalCenter.x + translation.x, self.originalCenter.y);
-    
-    if (self.changeAlpha)
+
+    if ((translation.x < 0 && self.changeAlphaLeft) ||
+        (translation.x > 0 && self.changeAlphaRight))
     {
       self.alpha = 1.0 - 0.9 * MIN(1, fabs(translation.x) / self.minPanToComplete);
     }
@@ -155,14 +204,14 @@
         _onWillBeSwipedOut(@{@"direction": directionString});
         self.onWillBeSwipedOut = nil;
       }
-      
+
       CGFloat distanceForSwipe = fabs(centerDiff);
       UIView *parentView = [self getRootView];
       if(parentView != nil)
       {
           distanceForSwipe = parentView.frame.size.width - self.center.x + self.frame.size.width * 0.5;
       }
-        
+
       NSTimeInterval duration = MIN(0.3, fabs(self.minPanToComplete / velocityX));
       [UIView animateWithDuration:duration
                        animations:^()
@@ -181,19 +230,19 @@
              [self removeFromSuperview];
            }
          }
-         
+
          [self restoreScrolling];
        }];
     }
     else
     {
       [self restoreScrolling];
-      
+
       if (_onWillBounceBack)
       {
         _onWillBounceBack(@{});
       }
-      
+
       [UIView animateWithDuration:self.bounceBackAnimDuration
                             delay:0 usingSpringWithDamping:self.bounceBackAnimDamping
             initialSpringVelocity:0
@@ -201,7 +250,7 @@
                        animations:^()
        {
          self.center = self.originalCenter;
-         if (self.changeAlpha)
+         if (self.changeAlphaLeft || self.changeAlphaRight)
          {
            self.alpha = 1;
          }
@@ -228,6 +277,8 @@ RCT_EXPORT_MODULE()
 }
 
 RCT_REMAP_VIEW_PROPERTY(changeOpacity, changeAlpha, BOOL)
+RCT_REMAP_VIEW_PROPERTY(opacityDirection, alphaDirection, NSString)
+RCT_REMAP_VIEW_PROPERTY(opacityDirection, direction, NSString)
 RCT_REMAP_VIEW_PROPERTY(removeViewOnSwipedOut, removeViewOnSwipedOut, BOOL)
 RCT_REMAP_VIEW_PROPERTY(minPanToComplete, minPanToComplete, CGFloat)
 RCT_REMAP_VIEW_PROPERTY(bounceBackAnimDuration, bounceBackAnimDuration, CGFloat)
