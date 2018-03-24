@@ -36,6 +36,9 @@ public class SwipeViewManager extends ViewGroupManager<SwipeView> {
     public void setChangeOpactity(SwipeView view, String direction) {
         view.setAnimateOpacity(direction);
     }
+    public void setChangeOpactity(SwipeView view, boolean enable) {
+        view.setAnimateOpacity(enable?"both":"none");
+    }
 
     @Override
     protected void addEventEmitters(ThemedReactContext reactContext, SwipeView view) {
