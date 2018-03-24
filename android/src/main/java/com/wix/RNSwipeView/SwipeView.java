@@ -22,7 +22,8 @@ public class SwipeView extends ViewGroup {
     private static final boolean DEFAULT_ANIMATE_OPACITY = true;
     private float initialX = 0;
     private boolean swiping = false;
-    private boolean animateOpacity = DEFAULT_ANIMATE_OPACITY;
+    private boolean animateOpacityLeft = DEFAULT_ANIMATE_OPACITY;
+    private boolean animateOpacityRight = DEFAULT_ANIMATE_OPACITY;
     private int swipeOutDistance = Integer.MAX_VALUE;
     private SwipeViewListener listener;
 
@@ -92,7 +93,8 @@ public class SwipeView extends ViewGroup {
 
     private void handleMove(float deltaX) {
         setTranslationX(deltaX);
-        if (animateOpacity) {
+        if (deltaX < 0 && animateOpacityLeft ||
+            deltaX > 0 && animateOpacityRight) {
             float newAlpha = 1 - 0.9f * Math.min(1, Math.abs(deltaX) / swipeOutDistance);
             setAlpha(newAlpha);
         }
@@ -143,7 +145,16 @@ public class SwipeView extends ViewGroup {
                 });
     }
 
-    public void setAnimateOpacity(boolean animateOpacity) {
-        this.animateOpacity = animateOpacity;
+    public void setAnimateOpacity(String direction) {
+        this.animateOpacityLeft = this.animateOpacityRight = false;
+        if("left".equals(direction)) {
+            this.animateOpacityLeft = true;
+        }
+        if("right".equals(direction)) {
+            this.animateOpacityRight = true;
+        }
+        if("both".equals(direction)) {
+            this.animateOpacityLeft = this.animateOpacityRight = true;
+        }
     }
 }

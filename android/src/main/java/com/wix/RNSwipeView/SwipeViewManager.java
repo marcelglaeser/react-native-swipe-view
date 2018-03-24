@@ -33,8 +33,8 @@ public class SwipeViewManager extends ViewGroupManager<SwipeView> {
     }
 
     @ReactProp(name = "changeOpacity")
-    public void setChangeOpactity(SwipeView view, boolean changeOpacity) {
-        view.setAnimateOpacity(changeOpacity);
+    public void setChangeOpactity(SwipeView view, String direction) {
+        view.setAnimateOpacity(direction);
     }
 
     @Override
