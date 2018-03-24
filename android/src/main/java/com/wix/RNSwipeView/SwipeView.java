@@ -2,7 +2,9 @@ package com.wix.RNSwipeView;
 
 import android.content.Context;
 import android.support.v4.view.MotionEventCompat;
+import android.support.v4.view.VelocityTrackerCompat;
 import android.view.MotionEvent;
+import android.view.VelocityTracker;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 
@@ -28,7 +30,9 @@ public class SwipeView extends ViewGroup {
     private boolean allowLeft = DEFAULT_ALLOW_DIRECTION;
     private boolean allowRight = DEFAULT_ALLOW_DIRECTION;
     private int swipeOutDistance = Integer.MAX_VALUE;
+    private int swipeOutSpeed = Integer.MAX_VALUE;
     private SwipeViewListener listener;
+    private VelocityTracker velocityTracker = null;
 
     public SwipeView(Context context) {
         super(context);
@@ -42,6 +46,7 @@ public class SwipeView extends ViewGroup {
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
         swipeOutDistance = w/2;
+        swipeOutSpeed = w/2;
     }
 
     @Override
@@ -55,8 +60,21 @@ public class SwipeView extends ViewGroup {
         switch(action) {
             case (MotionEvent.ACTION_DOWN):
                 initialX = event.getRawX();
+                if(velocityTracker == null) {
+                    // Retrieve a new VelocityTracker object to watch the
+                    // velocity of a motion.
+                    velocityTracker = VelocityTracker.obtain();
+                }
+                else {
+                    // Reset the velocity tracker back to its initial state.
+                    velocityTracker.clear();
+                }
+                // Add a user's movement to the tracker.
+                velocityTracker.addMovement(event);
                 return false;
             case (MotionEvent.ACTION_MOVE) :
+                velocityTracker.addMovement(event);
+                velocityTracker.computeCurrentVelocity(1000);
                 float deltaX = event.getRawX() - initialX;
                 boolean nowSwiping = Math.abs(deltaX) > MIN_DISABLE_SCROLL &&
                     (allowLeft && deltaX < 0 ||
@@ -84,6 +102,8 @@ public class SwipeView extends ViewGroup {
 
         switch(action) {
             case (MotionEvent.ACTION_MOVE) :
+                velocityTracker.addMovement(event);
+                velocityTracker.computeCurrentVelocity(1000);
                 float deltaX = event.getRawX() - initialX;
                 handleMove(deltaX);
                 return true;
@@ -111,9 +131,13 @@ public class SwipeView extends ViewGroup {
     }
 
     private boolean handleUp(MotionEvent event) {
-        float deltaX = event.getRawX() - initialX;
+        int index = event.getActionIndex();
+        int pointerId = event.getPointerId(index);
 
-        if(Math.abs(deltaX) >= swipeOutDistance &&
+        float deltaX = event.getRawX() - initialX;
+        float vx = VelocityTrackerCompat.getXVelocity(velocityTracker,
+                                                      pointerId);
+    if((Math.abs(deltaX) >= swipeOutDistance || Math.abs(vx) >= swipeOutSpeed) &&
            (allowLeft && deltaX < 0 || allowRight && deltaX > 0)) {
             animateOut(deltaX > 0);
         } else {
