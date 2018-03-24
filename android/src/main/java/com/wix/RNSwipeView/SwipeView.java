@@ -192,7 +192,7 @@ public class SwipeView extends ViewGroup {
         }
     }
 
-    public void setDirection(String direction) {
+    public void setSwipeDirection(String direction) {
         this.allowLeft = this.allowRight = false;
         if("left".equals(direction)) {
             this.allowLeft = true;
