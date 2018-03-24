@@ -37,6 +37,11 @@ public class SwipeViewManager extends ViewGroupManager<SwipeView> {
         view.setAnimateOpacity(direction);
     }
 
+    @ReactProp(name = "direction")
+    public void setDirection(SwipeView view, String direction) {
+        view.setDirection(direction);
+    }
+
     @Override
     protected void addEventEmitters(ThemedReactContext reactContext, SwipeView view) {
         view.setListener(new SwipeEventsEmitter(view, reactContext.getNativeModule(UIManagerModule.class).getEventDispatcher()));

@@ -20,10 +20,13 @@ public class SwipeView extends ViewGroup {
 
     private static final float MIN_DISABLE_SCROLL = new ViewConfiguration().getScaledPagingTouchSlop();
     private static final boolean DEFAULT_ANIMATE_OPACITY = true;
+    private static final boolean DEFAULT_ALLOW_DIRECTION = true;
     private float initialX = 0;
     private boolean swiping = false;
     private boolean animateOpacityLeft = DEFAULT_ANIMATE_OPACITY;
     private boolean animateOpacityRight = DEFAULT_ANIMATE_OPACITY;
+    private boolean allowLeft = DEFAULT_ALLOW_DIRECTION;
+    private boolean allowRight = DEFAULT_ALLOW_DIRECTION;
     private int swipeOutDistance = Integer.MAX_VALUE;
     private SwipeViewListener listener;
 
@@ -55,7 +58,9 @@ public class SwipeView extends ViewGroup {
                 return false;
             case (MotionEvent.ACTION_MOVE) :
                 float deltaX = event.getRawX() - initialX;
-                boolean nowSwiping = Math.abs(deltaX) > MIN_DISABLE_SCROLL;
+                boolean nowSwiping = Math.abs(deltaX) > MIN_DISABLE_SCROLL &&
+                    (allowLeft && deltaX < 0 ||
+                     allowRight && deltaX > 0);
                 if (!swiping && nowSwiping && listener != null) {
                     listener.onSwipeStart();
                 }
@@ -92,6 +97,10 @@ public class SwipeView extends ViewGroup {
     }
 
     private void handleMove(float deltaX) {
+        if((!allowLeft && deltaX < 0) ||
+           (!allowRight && deltaX > 0)) {
+            deltaX = 0;
+        }
         setTranslationX(deltaX);
         if (deltaX < 0 && animateOpacityLeft ||
             deltaX > 0 && animateOpacityRight) {
@@ -104,7 +113,8 @@ public class SwipeView extends ViewGroup {
     private boolean handleUp(MotionEvent event) {
         float deltaX = event.getRawX() - initialX;
 
-        if(Math.abs(deltaX) >= swipeOutDistance) {
+        if(Math.abs(deltaX) >= swipeOutDistance &&
+           (allowLeft && deltaX < 0 || allowRight && deltaX > 0)) {
             animateOut(deltaX > 0);
         } else {
             animateBack(swiping);
@@ -155,6 +165,19 @@ public class SwipeView extends ViewGroup {
         }
         if("both".equals(direction)) {
             this.animateOpacityLeft = this.animateOpacityRight = true;
+        }
+    }
+
+    public void setDirection(String direction) {
+        this.allowLeft = this.allowRight = false;
+        if("left".equals(direction)) {
+            this.allowLeft = true;
+        }
+        if("right".equals(direction)) {
+            this.allowRight = true;
+        }
+        if("both".equals(direction)) {
+            this.allowLeft = this.allowRight = true;
         }
     }
 }
