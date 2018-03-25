@@ -5,17 +5,30 @@ import {
   PanResponder,
   View
 } from 'react-native'
+import PropTypes from 'prop-types'
+
+const noop = () => {}
+const directions = {
+  '-1': 'left',
+  '0': 'none',
+  '1': 'right'
+}
 
 class SwipeView extends View {
   static defaultProps = {
-    swipeDirection: "both",
     changeOpacity: true,
     opacityDirection: "both",
-    threshold: 50,
-    useNativeDriver: true,
-    onSwipe: (dir) => {},
-    swipeOutDistance: null,
-    swipeOutSpeed: null
+    swipeDirection: "both",
+
+    removeViewOnSwipedOut: false,
+    minPanToComplete: 0.5,
+    bounceBackAnimDuration: 0.35,
+    bounceBackAnimDamping: 0.65, // ignored on web, use bounceBackAnimDuration
+    onSwipeStart: noop,
+    onWillBeSwipedOut: noop,
+    onSwipedOut: noop,
+    onWillBounceBack: noop,
+    onBouncedBack: noop
   }
 
   constructor(props) {
@@ -32,37 +45,47 @@ class SwipeView extends View {
       animateOpacityRight: props.changeOpacity && (props.opacityDirection == 'right' || props.opacityDirection == 'both'),
       pan,
       swipeOutDistance,
-      swipe: Animated.divide(pan, swipeOutDistance)
+      swipe: Animated.divide(pan, swipeOutDistance),
+      size: {
+        width: Number.MAX_SAFE_INTEGER
+      }
     }
   }
 
   componentWillMount() {
     this.panResponder = PanResponder.create({
-      onMoveShouldSetPanResponder: (e, { dx, dy }) =>
-        (Math.abs(dy) < 5 &&
+      onMoveShouldSetPanResponder: (e, { dx, dy }) => {
+        let resp = (Math.abs(dy) < 5 &&
          (this.state.allowLeft && dx < -5 ||
-          this.state.allowRight && dx > 5)),
+          this.state.allowRight && dx > 5))
+        if(resp) {
+          this.props.onSwipeStart(directions[Math.sign(dx)])
+        }
+        return resp
+      },
       onPanResponderMove: Animated.event([
         null,
-        { dx: this.state.pan,
-          useNativeDriver: this.props.useNativeDriver}
+        { dx: this.state.pan }
       ]),
       onPanResponderRelease: (e, {dx, vx}) => {
         let speed = Math.abs(vx)
         let dir = Math.sign(dx)
-        if(dx > this.props.threshold || speed > 1) {
+        let direction = directions[dir]
+        if(Math.abs(dx) > this.props.minPanToComplete * this.state.size.width ||
+           speed > 1) {
+          this.props.onWillBeSwipedOut(direction)
           Animated.timing(this.state.pan, {
             toValue: 2000 * dir,
             duration: Math.abs((2000 * dir - dx) / Math.max(speed, 1)),
-            easing: Easing.linear,
-            useNativeDriver: true
-          }).start(() => {this.props.onSwipe(Math.sign(dx))})
+            easing: Easing.linear
+          }).start(() => {this.props.onSwipedOut(direction)})
         } else {
-          this.reset()
+          this.reset(direction)
         }
       },
-      onPanResponderTerminate: () => {
-        this.reset()
+      onPanResponderTerminate: (e, {dx}) => {
+        let direction = directions[Math.sign(dx)]
+        this.reset(direction)
       }
     });
     this.state.pan.setValue(0)
@@ -70,16 +93,21 @@ class SwipeView extends View {
 
   _onLayout(event) {
     let {width} = event.nativeEvent.layout
+    this.state.size.width = width
     this.state.swipeOutDistance.setValue(width / 2)
   }
 
-  reset() {
+  reset(dir) {
+    if(dir !== 'none') {
+      this.props.onWillBounceBack(dir)
+    }
     Animated.timing(this.state.pan, {
       toValue: 0,
-      duration: 200,
-      easing: Easing.ease,
-      useNativeDriver: this.props.useNativeDriver
-    }).start()
+      duration: this.props.bounceBackAnimDuration * 1000,
+      easing: Easing.ease
+    }).start(() => {
+      this.props.onBouncedBack(dir)
+    })
   }
 
   render() {
@@ -131,5 +159,19 @@ class SwipeView extends View {
     )
   }
 }
+
+SwipeView.propTypes = {
+  changeOpacity: PropTypes.bool,
+  removeViewOnSwipedOut: PropTypes.bool,
+  minPanToComplete: PropTypes.number,
+  bounceBackAnimDuration: PropTypes.number,
+  bounceBackAnimDamping: PropTypes.number,
+  onSwipeStart: PropTypes.func,
+  onWillBeSwipedOut: PropTypes.func,
+  onSwipedOut: PropTypes.func,
+  onWillBounceBack: PropTypes.func,
+  onBouncedBack: PropTypes.func
+}
+
 
 export default SwipeView

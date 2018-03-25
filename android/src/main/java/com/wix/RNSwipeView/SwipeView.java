@@ -137,7 +137,7 @@ public class SwipeView extends ViewGroup {
         float deltaX = event.getRawX() - initialX;
         float vx = VelocityTrackerCompat.getXVelocity(velocityTracker,
                                                       pointerId);
-    if((Math.abs(deltaX) >= swipeOutDistance || Math.abs(vx) >= swipeOutSpeed) &&
+        if((Math.abs(deltaX) >= swipeOutDistance || Math.abs(vx) >= swipeOutSpeed) &&
            (allowLeft && deltaX < 0 || allowRight && deltaX > 0)) {
             animateOut(deltaX > 0);
         } else {
