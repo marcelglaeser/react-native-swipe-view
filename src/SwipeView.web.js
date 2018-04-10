@@ -41,8 +41,6 @@ class SwipeView extends View {
     this.state = {
       allowLeft: props.swipeDirection == 'left' || props.swipeDirection == 'both',
       allowRight: props.swipeDirection == 'right' || props.swipeDirection == 'both',
-      animateOpacityLeft: props.changeOpacity && (props.opacityDirection == 'left' || props.opacityDirection == 'both'),
-      animateOpacityRight: props.changeOpacity && (props.opacityDirection == 'right' || props.opacityDirection == 'both'),
       pan,
       swipeOutDistance,
       swipe: Animated.divide(pan, swipeOutDistance),
@@ -50,14 +48,16 @@ class SwipeView extends View {
         width: Number.MAX_SAFE_INTEGER
       }
     }
+    this.state.animateOpacityLeft = this.state.allowLeft && props.changeOpacity && (props.opacityDirection == 'left' || props.opacityDirection == 'both')
+    this.state.animateOpacityRight = this.state.allowRight && props.changeOpacity && (props.opacityDirection == 'right' || props.opacityDirection == 'both')
   }
 
   componentWillMount() {
     this.panResponder = PanResponder.create({
       onMoveShouldSetPanResponder: (e, { dx, dy }) => {
         let resp = (Math.abs(dy) < 5 &&
-         (this.state.allowLeft && dx < -5 ||
-          this.state.allowRight && dx > 5))
+                    (this.state.allowLeft && dx < -5 ||
+                     this.state.allowRight && dx > 5))
         if(resp) {
           this.props.onSwipeStart(directions[Math.sign(dx)])
         }
@@ -71,8 +71,10 @@ class SwipeView extends View {
         let speed = Math.abs(vx)
         let dir = Math.sign(dx)
         let direction = directions[dir]
-        if(Math.abs(dx) > this.props.minPanToComplete * this.state.size.width ||
-           speed > 1) {
+        if((Math.abs(dx) > this.props.minPanToComplete * this.state.size.width ||
+            speed > 1) &&
+           ((this.state.allowLeft && dir < 0) ||
+            (this.state.allowRight && dir > 0))) {
           this.props.onWillBeSwipedOut(direction)
           Animated.timing(this.state.pan, {
             toValue: 2000 * dir,
